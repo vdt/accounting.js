@@ -252,14 +252,17 @@
 			// Clean up precision
 			usePrecision = checkPrecision(opts.precision),
 
-			// Do some calc:
-			negative = number < 0 ? "-" : "",
-			base = parseInt(toFixed(Math.abs(number || 0), usePrecision), 10) + "",
-			mod = base.length > 3 ? base.length % 3 : 0;
+                        // Round the absolute value according to precision
+                        base = toFixed(Math.abs(number || 0), usePrecision),
+                        // The integer part of the rounded number
+                        baseInt = base.split('.')[0],
+                        mod = baseInt.length > 3 ? baseInt.length % 3 : 0,
+                        // Only show a minus sign if the number is actually negative after rounding
+                        negative = number < 0 && Number(base) !== 0 ? "-" : "";
 
 		// Format the number:
-		return negative + (mod ? base.substr(0, mod) + opts.thousand : "") + base.substr(mod).replace(/(\d{3})(?=\d)/g, "$1" + opts.thousand) + (usePrecision ? opts.decimal + toFixed(Math.abs(number), usePrecision).split('.')[1] : "");
-	};
+                return negative + (mod ? baseInt.substr(0, mod) + opts.thousand : "") + baseInt.substr(mod).replace(/(\d{3})(?=\d)/g, "$1" + opts.thousand) + (usePrecision ? opts.decimal + base.split('.')[1] : "");
+        };
 
 
 	/**
@@ -281,30 +284,36 @@
 			});
 		}
 
-		// Clean up number:
-		number = unformat(number);
+                // Clean up number:
+                number = unformat(number);
 
-		// Build options object from second param (if object) or all params, extending defaults:
-		var opts = defaults(
-				(isObject(symbol) ? symbol : {
-					symbol : symbol,
-					precision : precision,
-					thousand : thousand,
-					decimal : decimal,
-					format : format
-				}),
-				lib.settings.currency
-			),
+                // Build options object from second param (if object) or all params, extending defaults:
+                var opts = defaults(
+                                (isObject(symbol) ? symbol : {
+                                        symbol : symbol,
+                                        precision : precision,
+                                        thousand : thousand,
+                                        decimal : decimal,
+                                        format : format
+                                }),
+                                lib.settings.currency
+                        ),
 
-			// Check format (returns object with pos, neg and zero):
-			formats = checkCurrencyFormat(opts.format),
+                        // Check format (returns object with pos, neg and zero):
+                        formats = checkCurrencyFormat(opts.format),
 
-			// Choose which format to use for this value:
-			useFormat = number > 0 ? formats.pos : number < 0 ? formats.neg : formats.zero;
+                        // Clean up precision
+                        usePrecision = checkPrecision(opts.precision),
 
-		// Return with currency symbol added:
-		return useFormat.replace('%s', opts.symbol).replace('%v', formatNumber(Math.abs(number), checkPrecision(opts.precision), opts.thousand, opts.decimal));
-	};
+                        // Rounded absolute value
+                        base = Number(toFixed(Math.abs(number), usePrecision)),
+
+                        // Choose which format to use for this value (positive, negative or zero after rounding):
+                        useFormat = number < 0 && base !== 0 ? formats.neg : number > 0 ? formats.pos : formats.zero;
+
+                // Return with currency symbol added:
+                return useFormat.replace('%s', opts.symbol).replace('%v', formatNumber(base, usePrecision, opts.thousand, opts.decimal));
+        };
 
 
 	/**
